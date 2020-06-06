@@ -1,0 +1,37 @@
+{
+	"name": "@st-lib/render",
+	"version": "1.0.2",
+	"description": "Lightweight HTML rendering library.",
+	"main": "lib/index.js",
+	"module": "lib/index.js",
+	"types": "lib/index.d.ts",
+	"license": "MIT",
+	"author": "padreramnt",
+	"keywords": [
+		"st-lib",
+		"render"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Padreramnt/st-lib--render"
+	},
+	"scripts": {
+		"start:tsc": "tsc",
+		"prebuild": "rimraf -rf ./lib",
+		"build": "tsc -p ./tsconfig.json",
+		"test": "tsc -p ./tsconfig.json --noEmit",
+		"prepublishOnly": "npm run build",
+		"prestart": "rimraf -rf ./lib",
+		"start": "tsc -p ./tsconfig.json -w"
+	},
+	"devDependencies": {
+		"rimraf": "^3.0.2",
+		"typescript": "^3.9.2"
+	},
+	"dependencies": {
+		"tslib": "^1.10.0"
+	},
+	"files": [
+		"lib"
+	]
+}
