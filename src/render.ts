@@ -313,10 +313,11 @@ class RenderContext<T extends Element> implements Context {
 		return o
 	}
 	pushElementAttr(descriptor: AttrDescriptor) {
-		this.willDeleteAttributes.delete(descriptor.name)
-		const value = this.target.getAttributeNS(descriptor.namespaceURI, descriptor.name)
+		const attrName = 'http://www.w3.org/1999/xhtml' === this.target.namespaceURI || null == this.target.namespaceURI ? descriptor.name.toLowerCase() : descriptor.name
+		this.willDeleteAttributes.delete(attrName)
+		const value = this.target.getAttributeNS(descriptor.namespaceURI, attrName)
 		if (value !== descriptor.value) {
-			this.target.setAttributeNS(descriptor.namespaceURI, descriptor.name, descriptor.value)
+			this.target.setAttributeNS(descriptor.namespaceURI, attrName, descriptor.value)
 		}
 	}
 	pushElementCleanupCallback(callback: ElementCleanupCallback<Node>): void {

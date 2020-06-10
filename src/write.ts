@@ -30,7 +30,7 @@ function writeElementAttrs(attrs: Record<string, string | String>) {
 }
 
 function writeElement(descriptor: ElementDescriptor<any>) {
-	const ctx = context.push(new ElementWriteContext(descriptor.tagName))
+	const ctx = context.push(new ElementWriteContext(descriptor.namespaceURI, descriptor.tagName))
 	ctx.render(descriptor.content)
 	context.pop()
 	return ctx.toString()
@@ -176,10 +176,12 @@ class WriteContext implements Context {
 class ElementWriteContext extends WriteContext {
 	attrs: Record<string, string | String>
 	tagName: string
+	namespaceURI: string | null
 	innerHTML?: string | String
-	constructor(tagName: string) {
+	constructor(namespaceURI: string | null, tagName: string) {
 		super()
 		this.attrs = {}
+		this.namespaceURI = namespaceURI
 		this.tagName = tagName
 	}
 	render(content: ((target: null) => void) | string | String | null) {
@@ -190,7 +192,7 @@ class ElementWriteContext extends WriteContext {
 		}
 	}
 	pushElementAttr(descriptor: AttrDescriptor) {
-		this.attrs[descriptor.name as string] = descriptor.value
+		this.attrs['http://www.w3.org/1999/xhtml' === this.namespaceURI || null == this.namespaceURI ? descriptor.name.toLowerCase() : descriptor.name] = descriptor.value
 	}
 	toString() {
 		const innerHTML = this.innerHTML ? this.innerHTML : this.children.map(it => it.html).join('')
