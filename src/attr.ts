@@ -71,7 +71,7 @@ export function attrs<T extends AttrsMap>(inp: T) {
 		const name = key.trim()
 		if (!name) continue
 		const [value, namespaceURI] = Array.isArray(entry) ? entry : [entry]
-		if (null == value || false == value) continue
+		if (null == value || false === value) continue
 		_pushElementAttr(ctx, name, value, namespaceURI)
 	}
 }

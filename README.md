@@ -8,7 +8,8 @@
 1. [@st-lib/render-html](https://www.npmjs.com/package/@st-lib/render-html),
 2. [@st-lib/render-svg](https://www.npmjs.com/package/@st-lib/render-svg),
 3. [@st-lib/render-mathml](https://www.npmjs.com/package/@st-lib/render-mathml),
-4. [@st-lib/render-events](https://www.npmjs.com/package/@st-lib/render-events).
+4. [@st-lib/render-events](https://www.npmjs.com/package/@st-lib/render-events),
+4. [@st-lib/render-with-state](https://www.npmjs.com/package/@st-lib/render-with-state).
 
 ## Concepts.
 
