@@ -74,6 +74,7 @@ export interface ElementUpdatedCallback<T = Element> {
 }
 
 export interface Context {
+	readonly target: Element | null
 	pushComment(descriptor: CommentDescriptor): Comment | null
 	pushElement(descriptor: ElementDescriptor): Element | null
 	pushElementAttr(descriptor: AttrDescriptor): void

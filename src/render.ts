@@ -257,13 +257,13 @@ function isElement(it: unknown): it is Element {
 }
 
 class RenderContext<T extends Element> implements Context {
-	order: number
 	isUpdated: boolean
 	elementCleanupCallbacksSet: ElementCleanupCallbacksSet
 	elementCreatedCallbacksSet: ElementCreatedCallbacksSet
 	elementUpdatedCallbacksSet: ElementUpdatedCallbacksSet
 	elementLinkCallbacksSet: ElementLinkCallbacksSet
 	willDeleteAttributes: Set<string>
+	keys: Map<any, number>
 	target: T
 	renderer: Renderer
 	constructor(target: T, renderer: Renderer) {
@@ -275,26 +275,36 @@ class RenderContext<T extends Element> implements Context {
 		this.elementUpdatedCallbacksSet = new Set()
 		this.elementLinkCallbacksSet = new Set()
 		this.willDeleteAttributes = new Set(target.getAttributeNames())
-		this.order = 0
+		this.keys = new Map()
 		runElementCleanupCallbacks(target, this.elementCleanupCallbacksSet)
+	}
+	getDescriptorKey(descriptor: { key: any }) {
+		return null == descriptor.key ? this.keys.size : descriptor.key
+	}
+	getKeyOrder(key: any) {
+		if (!this.keys.has(key)) {
+			this.keys.set(key, this.keys.size)
+		}
+		return this.keys.get(key)!
 	}
 	pushComment(descriptor: CommentDescriptor): Comment | null {
 		if (!descriptor.content) return null
-		const key = null == descriptor.key ? this.order : descriptor.key
+		const key = this.getDescriptorKey(descriptor)
+		const order = this.getKeyOrder(key)
 		const node = findNode(
 			this.target.childNodes,
 			key,
 			isComment,
-			this.order,
+			order,
 		)
 		const o = node
-			? updateComment(this.target, this.order, descriptor, node)
-			: createComment(this.target, this.order, descriptor, key, this.renderer)
-		this.order++
+			? updateComment(this.target, order, descriptor, node)
+			: createComment(this.target, order, descriptor, key, this.renderer)
 		return o
 	}
 	pushElement(descriptor: ElementDescriptor<Element>): Element | null {
-		const key = null == descriptor.key ? this.order : descriptor.key
+		const key = this.getDescriptorKey(descriptor)
+		const order = this.getKeyOrder(key)
 		const tagName = null == descriptor.namespaceURI || 'http://www.w3.org/1999/xhtml' === descriptor.namespaceURI
 			? descriptor.tagName.toUpperCase()
 			: descriptor.tagName
@@ -302,14 +312,13 @@ class RenderContext<T extends Element> implements Context {
 			this.target.childNodes,
 			key,
 			isElement,
-			this.order,
+			order,
 		)
 		const o = node
 			? tagName === node.tagName
-				? updateElement(this.target, this.order, descriptor, node, this.renderer)
-				: replaceElement(this.target, this.order, node, descriptor, key, this.renderer)
-			: createElement(this.target, this.order, descriptor, key, this.renderer)
-		this.order++
+				? updateElement(this.target, order, descriptor, node, this.renderer)
+				: replaceElement(this.target, order, node, descriptor, key, this.renderer)
+			: createElement(this.target, order, descriptor, key, this.renderer)
 		return o
 	}
 	pushElementAttr(descriptor: AttrDescriptor) {
@@ -340,12 +349,12 @@ class RenderContext<T extends Element> implements Context {
 	}
 	pushText(descriptor: TextDescriptor): Text | null {
 		if (!descriptor.content) return null
-		const key = null == descriptor.key ? this.order : descriptor.key
-		const node = findNode(this.target.childNodes, key, isText, this.order)
+		const key = this.getDescriptorKey(descriptor)
+		const order = this.getKeyOrder(key)
+		const node = findNode(this.target.childNodes, key, isText, order)
 		const o = node
-			? updateText(this.target, this.order, descriptor, node)
-			: createText(this.target, this.order, descriptor, key, this.renderer)
-		this.order++
+			? updateText(this.target, order, descriptor, node)
+			: createText(this.target, order, descriptor, key, this.renderer)
 		return o
 	}
 	updateAttributes() {
@@ -354,8 +363,8 @@ class RenderContext<T extends Element> implements Context {
 		}
 	}
 	updateChildNodes() {
-		while (this.order < this.target.childNodes.length) {
-			removeChildNode(this.target, this.target.childNodes[this.order])
+		while (this.keys.size < this.target.childNodes.length) {
+			removeChildNode(this.target, this.target.childNodes[this.keys.size])
 		}
 	}
 	updateCallbacks() {

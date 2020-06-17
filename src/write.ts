@@ -121,6 +121,7 @@ class WriteContext implements Context {
 		this.order = 0
 		this.children = []
 	}
+	get target() { return null }
 	pushComment(descriptor: CommentDescriptor) {
 		const key = getKey(descriptor, this.order)
 		const idx = findIndex(this.children, it => it.key === key, this.order)
