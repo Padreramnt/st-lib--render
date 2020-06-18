@@ -13,8 +13,8 @@ interface ElementCreatedCallbacksSet extends Set<ElementCreatedCallback<Node>> {
 interface ElementUpdatedCallbacksSet extends Set<ElementUpdatedCallback<Node>> {
 	__typename?: 'ElementUpdatedCallbacksSet'
 }
-interface ElementLinkCallbacksSet extends Set<ElementLinkingCallback<Node>> {
-	__typename?: 'ElementLinkCallbacksSet'
+interface ElementLinkingCallbacksSet extends Set<ElementLinkingCallback<Node>> {
+	__typename?: 'ElementLinkingCallbacksSet'
 }
 
 const nodesKeyMap = new WeakMap<object, any>()
@@ -256,24 +256,26 @@ function isElement(it: unknown): it is Element {
 	return it instanceof Element
 }
 
-class RenderContext<T extends Element> implements Context {
+class RenderContext implements Context {
 	isUpdated: boolean
 	elementCleanupCallbacksSet: ElementCleanupCallbacksSet
 	elementCreatedCallbacksSet: ElementCreatedCallbacksSet
 	elementUpdatedCallbacksSet: ElementUpdatedCallbacksSet
-	elementLinkCallbacksSet: ElementLinkCallbacksSet
+	elementLinkingCallbacksSet: ElementLinkingCallbacksSet
 	willDeleteAttributes: Set<string>
 	keys: Map<any, number>
-	target: T
+	target: Element
 	renderer: Renderer
-	constructor(target: T, renderer: Renderer) {
+	readonly content: (target: Element | null) => void
+	constructor(target: Element, content: (target: Element | null) => void, renderer: Renderer) {
 		this.target = target
+		this.content = content
 		this.renderer = renderer
 		this.isUpdated = elementsRemovedCallbacksSetMap.has(target)
 		this.elementCleanupCallbacksSet = getElementCleanupCallbacksSet(target)
 		this.elementCreatedCallbacksSet = new Set()
 		this.elementUpdatedCallbacksSet = new Set()
-		this.elementLinkCallbacksSet = new Set()
+		this.elementLinkingCallbacksSet = new Set()
 		this.willDeleteAttributes = new Set(target.getAttributeNames())
 		this.keys = new Map()
 		runElementCleanupCallbacks(target, this.elementCleanupCallbacksSet)
@@ -336,13 +338,13 @@ class RenderContext<T extends Element> implements Context {
 		this.elementCreatedCallbacksSet.add(callback)
 	}
 	pushElementLinkingCallback(callback: ElementLinkingCallback<Node>): void {
-		if (this.elementLinkCallbacksSet.has(callback)) return
-		this.elementLinkCallbacksSet.add(callback)
+		if (this.elementLinkingCallbacksSet.has(callback)) return
+		this.elementLinkingCallbacksSet.add(callback)
 		const cleanup = callback(this.target)
 		if (typeof cleanup === 'function') this.elementCleanupCallbacksSet.add(cleanup)
 	}
 	pushElementRemovedCallback(callback: ElementRemovedCallback<Node>): void {
-		this.elementCreatedCallbacksSet.add(() => callback)
+		this.pushElementCreatedCallback(() => callback)
 	}
 	pushElementUpdatedCallback(callback: ElementUpdatedCallback<Node>): void {
 		this.elementUpdatedCallbacksSet.add(callback)
@@ -376,8 +378,8 @@ class RenderContext<T extends Element> implements Context {
 			elementsRemovedCallbacksSetMap.set(this.target, runElementCreatedCallbacks(this.target, this.elementCreatedCallbacksSet))
 		}
 	}
-	render(content: (target: T) => void) {
-		content(this.target)
+	render() {
+		this.content(this.target)
 		this.updateAttributes()
 		this.updateChildNodes()
 		this.updateCallbacks()
@@ -387,11 +389,14 @@ class RenderContext<T extends Element> implements Context {
 export function render<T extends Element>(
 	target: T | null,
 	content: (ref: T) => void,
+	renderer?: Renderer,
+): void
+export function render(
+	target: Element | null,
+	content: (ref: Element | null) => void,
 	renderer: Renderer = document,
 ) {
 	if (null == target) return
-	const elementCleanupCallbacksSet = getElementCleanupCallbacksSet(target)
-	runElementCleanupCallbacks(target, elementCleanupCallbacksSet)
-	context.push(new RenderContext(target, renderer)).render(content)
+	context.push(new RenderContext(target, content, renderer)).render()
 	context.pop()
 }

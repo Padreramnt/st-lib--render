@@ -75,6 +75,7 @@ export interface ElementUpdatedCallback<T = Element> {
 
 export interface Context {
 	readonly target: Element | null
+	readonly content: (target: Element | null) => void
 	pushComment(descriptor: CommentDescriptor): Comment | null
 	pushElement(descriptor: ElementDescriptor): Element | null
 	pushElementAttr(descriptor: AttrDescriptor): void
@@ -84,15 +85,6 @@ export interface Context {
 	pushElementRemovedCallback(callback: ElementRemovedCallback): void
 	pushElementUpdatedCallback(callback: ElementUpdatedCallback): void
 	pushText(descriptor: TextDescriptor): Text | null
-}
-
-const contexts: Context[] = []
-
-export function peekContext() {
-	if (contexts.length < 1) {
-		return null
-	}
-	return contexts[contexts.length - 1]
 }
 
 const $$contexts = Symbol('contexts')
@@ -124,4 +116,5 @@ class ContextRegistry implements IContextRegistry {
 	}
 }
 
-export default new ContextRegistry()
+export const context = new ContextRegistry()
+export default context
