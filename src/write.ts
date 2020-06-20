@@ -49,7 +49,7 @@ function writeText(descriptor: TextDescriptor) {
 }
 
 function writeComment(descriptor: CommentDescriptor) {
-	return `<!-- ${escapeHTMLChars(descriptor.content)} --!>`
+	return `<!-- ${escapeHTMLChars(descriptor.content)} -->`
 }
 
 class WriteContext implements Context {
