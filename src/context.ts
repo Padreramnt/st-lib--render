@@ -3,6 +3,7 @@ export interface ElementDescriptor<T = Element> {
 	tagName: string
 	namespaceURI: string | null
 	key: any
+	options: ElementCreationOptions | null,
 	content: ElementContentDescriptor<T> | null
 }
 

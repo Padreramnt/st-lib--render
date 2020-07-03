@@ -30,7 +30,7 @@ function writeElementAttrs(attrs: Record<string, string | String>) {
 }
 
 function writeElement(descriptor: ElementDescriptor<any>) {
-	const ctx = context.push(new ElementWriteContext(descriptor.namespaceURI, descriptor.tagName, descriptor.content))
+	const ctx = context.push(new ElementWriteContext(descriptor.namespaceURI, descriptor.tagName, descriptor.content, descriptor.options))
 	ctx.render()
 	context.pop()
 	return ctx.toString()
@@ -112,7 +112,13 @@ class ElementWriteContext extends WriteContext {
 	tagName: string
 	namespaceURI: string | null
 	innerHTML?: string | String
-	constructor(namespaceURI: string | null, tagName: string, content: ((target: Element | null) => void) | string | String | null) {
+	options: ElementCreationOptions | null
+	constructor(
+		namespaceURI: string | null,
+		tagName: string,
+		content: ((target: Element | null) => void) | string | String | null,
+		options: ElementCreationOptions | null
+	) {
 		super(typeof content === 'function' ? content : noop)
 		if (typeof content === 'string' || content instanceof String) {
 			this.innerHTML = content
@@ -120,6 +126,7 @@ class ElementWriteContext extends WriteContext {
 		this.attrs = {}
 		this.namespaceURI = namespaceURI
 		this.tagName = tagName
+		this.options = options
 	}
 	render() {
 		if (typeof this.innerHTML === 'undefined') {
@@ -128,14 +135,18 @@ class ElementWriteContext extends WriteContext {
 		}
 	}
 	pushElementAttr(descriptor: AttrDescriptor) {
-		this.attrs['http://www.w3.org/1999/xhtml' === this.namespaceURI || null == this.namespaceURI ? descriptor.name.toLowerCase() : descriptor.name] = descriptor.value
+		const trimmed = descriptor.name.trim()
+		const normalized = trimmed.toLowerCase()
+		if ('is' === normalized) return
+		this.attrs['http://www.w3.org/1999/xhtml' === this.namespaceURI || null == this.namespaceURI ? normalized : trimmed] = descriptor.value
 	}
 	toString() {
 		const innerHTML = this.innerHTML ? this.innerHTML : ''
+		const is = this.options && this.options.is ? ` is="${escapeHTMLChars(this.options.is)}"` : ''
 		const a = writeElementAttrs(this.attrs)
 		return innerHTML || !selfclose.has(this.tagName)
-			? `<${this.tagName}${a.length ? ' ' + a : ''}>${innerHTML}</${this.tagName}>`
-			: `<${this.tagName}${a.length ? ' ' + a : ''} />`
+			? `<${this.tagName}${is}${a.length ? ' ' + a : ''}>${innerHTML}</${this.tagName}>`
+			: `<${this.tagName}${is}${a.length ? ' ' + a : ''} />`
 	}
 }
 

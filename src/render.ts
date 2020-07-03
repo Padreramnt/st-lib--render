@@ -118,16 +118,35 @@ function createText(
 	return node
 }
 
-function renderContent(node: Element, content: ((ref: any) => (() => void) | void) | string | String | false | null | undefined, renderer: Renderer) {
+function renderContent(
+	node: Element,
+	content: any,
+	options: ElementCreationOptions,
+	renderer: Renderer
+) {
 	if (typeof content === 'function') {
-		render(node, node => {
-			const unref = content(node)
-			if (typeof unref === 'function') {
-				getElementCleanupCallbacksSet(node).add(unref)
-			}
-		}, renderer)
+		render(node, content, renderer)
 	} else if (typeof content === 'string' || content instanceof String) {
 		node.innerHTML = String(content)
+	}
+	if (options.is && options.is !== node.getAttributeNS(null, 'is')) node.setAttributeNS(null, 'is', options.is)
+}
+
+function getElementCreationOptions(descriptor: ElementDescriptor<any>) {
+	const options: ElementCreationOptions = {}
+	if (null != descriptor.options) {
+		if (null != descriptor.options.is) {
+			options.is = descriptor.options.is
+		}
+	}
+	return options
+}
+
+function getCustomElementConstructor(tagName: string | null | undefined): null | (new (...args: any[]) => any) {
+	try {
+		return null == tagName ? null : window.customElements.get(tagName)
+	} catch {
+		return null
 	}
 }
 
@@ -138,8 +157,10 @@ function createElement(
 	key: any,
 	renderer: Renderer,
 ) {
-	const node = descriptor.namespaceURI ? renderer.createElementNS(descriptor.namespaceURI, descriptor.tagName) : renderer.createElement(descriptor.tagName)
-	renderContent(node, descriptor.content, renderer)
+	const options = getElementCreationOptions(descriptor)
+	const node = descriptor.namespaceURI ? renderer.createElementNS(descriptor.namespaceURI, descriptor.tagName, options) : renderer.createElement(descriptor.tagName, options)
+	renderContent(node, descriptor.content, options, renderer)
+	if (options.is) node.setAttributeNS(null, 'is', options.is)
 	target.insertBefore(node, target.childNodes[order])
 	nodesKeyMap.set(node, key)
 	return node
@@ -153,9 +174,10 @@ function replaceElement(
 	key: any,
 	renderer: Renderer,
 ) {
+	const options = getElementCreationOptions(descriptor)
 	removeNode(oldNode)
-	const newNode = descriptor.namespaceURI ? renderer.createElementNS(descriptor.namespaceURI, descriptor.tagName) : renderer.createElement(descriptor.tagName)
-	renderContent(newNode, descriptor.content, renderer)
+	const newNode = descriptor.namespaceURI ? renderer.createElementNS(descriptor.namespaceURI, descriptor.tagName, options) : renderer.createElement(descriptor.tagName, options)
+	renderContent(newNode, descriptor.content, options, renderer)
 	if (target.childNodes[order] === oldNode) {
 		target.replaceChild(newNode, oldNode)
 	} else {
@@ -174,8 +196,7 @@ function updateElement(
 	renderer: Renderer,
 ) {
 	cleanup(node)
-	const { content } = descriptor
-	renderContent(node, content, renderer)
+	renderContent(node, descriptor.content, getElementCreationOptions(descriptor), renderer)
 	if (target.childNodes[order] !== node) {
 		target.insertBefore(node, target.childNodes[order])
 	}
@@ -277,6 +298,7 @@ class RenderContext implements Context {
 		this.elementUpdatedCallbacksSet = new Set()
 		this.elementLinkingCallbacksSet = new Set()
 		this.willDeleteAttributes = new Set(target.getAttributeNames())
+		this.willDeleteAttributes.delete('is')
 		this.keys = new Map()
 		runElementCleanupCallbacks(target, this.elementCleanupCallbacksSet)
 	}
@@ -307,6 +329,8 @@ class RenderContext implements Context {
 	pushElement(descriptor: ElementDescriptor<Element>): Element | null {
 		const key = this.getDescriptorKey(descriptor)
 		const order = this.getKeyOrder(key)
+		const options = getElementCreationOptions(descriptor)
+		const CustomElement = getCustomElementConstructor(options.is)
 		const tagName = null == descriptor.namespaceURI || 'http://www.w3.org/1999/xhtml' === descriptor.namespaceURI
 			? descriptor.tagName.toUpperCase()
 			: descriptor.tagName
@@ -317,14 +341,17 @@ class RenderContext implements Context {
 			order,
 		)
 		const o = node
-			? tagName === node.tagName
+			? tagName === node.tagName && (!CustomElement || (node instanceof CustomElement))
 				? updateElement(this.target, order, descriptor, node, this.renderer)
 				: replaceElement(this.target, order, node, descriptor, key, this.renderer)
 			: createElement(this.target, order, descriptor, key, this.renderer)
 		return o
 	}
 	pushElementAttr(descriptor: AttrDescriptor) {
-		const attrName = 'http://www.w3.org/1999/xhtml' === this.target.namespaceURI || null == this.target.namespaceURI ? descriptor.name.toLowerCase() : descriptor.name
+		const trimmed = descriptor.name.trim()
+		const normalized = trimmed.toLowerCase()
+		if ('is' === normalized) return
+		const attrName = 'http://www.w3.org/1999/xhtml' === this.target.namespaceURI || null == this.target.namespaceURI ? normalized : trimmed
 		this.willDeleteAttributes.delete(attrName)
 		const value = this.target.getAttributeNS(descriptor.namespaceURI, attrName)
 		if (value !== descriptor.value) {

@@ -35,15 +35,17 @@ export declare function render<T extends Element>(target: T | null, content: (re
 
 ### Element
 
-Create element node with specified key, tag name, namespace URI and content rendering function or raw HTML string
+Create element node with specified key, tag name, namespace URI, creation options and content rendering function or raw HTML string
+
+> UPDATE: added customized built-in elements support.
 
 ```ts
-export declare function element<T extends Element>(key: any, tag: string | [string, (string | null)?], content?: ElementContentDescriptor<T> | false | null | undefined): T | null;
+export declare function element<T extends Element>(key: any, tag: string | [string, (string | null)?, (ElementCreationOptions | null)?], content?: ElementContentDescriptor<T> | false | null | undefined): T | null;
 ```
 
-___Key___: accepts any type: `number`, `string`, `symbol` or `object`. Passing `null` or `undefined` as key will be replaced with current call order.
+___Key___: accepts any type: `number`, `string`, `symbol` or `object`. Passing `null` or `undefined` as key will be replaced with current key order.
 
-___Tag___: accepts `tagName: string` or turple` [tagName: string, namespaceURI?: string | null] `
+___Tag___: accepts `tagName: string` or turple` [tagName: string, namespaceURI?: string | null, options?: ElementCreationOptions | null] `
 
 ___Content___: content rendering function `(ref: T extends Element) => void` or raw HTML string
 
@@ -62,8 +64,17 @@ window.onload = () => {
 			element(null, 'article')
 			element(null, 'article')
 			element(null, 'article')
+			// svg support
+			element(null, ['svg', 'http://www.w3.org/2000/svg'], () => {
+				element(null, ['a', 'http://www.w3.org/2000/svg'])
+			})
+			// custom element
+			element(null, 'custom-element')
+			// cusomized built-in
+			element(null, ['form', null, { is: 'custom-form' }])
 		})
 		element(null, 'footer')
+		//
 	})
 }
 
@@ -75,6 +86,11 @@ window.onload = () => {
 		<article></article>
 		<article></article>
 		<article></article>
+		<svg>
+			<a />
+		</svg>
+		<custom-element></custom-element>
+		<form is='custom-form'></form>
 	</main>
 	<footer></footer>
 </body>
