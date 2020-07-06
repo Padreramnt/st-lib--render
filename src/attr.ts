@@ -23,7 +23,7 @@ export function attr(
 	value: OptionalAttrValue,
 	namespaceURI: string | null = null
 ) {
-	if (null == value || false === value) return
+	if (null == value) return
 	name = name.trim()
 	if (!name) return
 	const ctx = context.peek()
@@ -51,7 +51,7 @@ function* yieldObjectEntries<K extends keyof any, V>(inp: Record<K, V>) {
 function _pushElementAttr(
 	ctx: Context,
 	name: string,
-	value: OptionalAttrValue,
+	value: string | number | false,
 	namespaceURI: string | null = null
 ) {
 	if (typeof value === 'number' && isNaN(+value)) {
@@ -59,7 +59,7 @@ function _pushElementAttr(
 	}
 	return ctx.pushElementAttr({
 		name,
-		value: String(value),
+		value: typeof value === 'boolean' ? value : String(value),
 		namespaceURI: null == namespaceURI ? null : String(namespaceURI)
 	})
 }
@@ -67,11 +67,10 @@ function _pushElementAttr(
 export function attrs<T extends AttrsMap>(inp: T) {
 	const ctx = context.peek()
 	if (ctx) for (const [key, entry] of yieldObjectEntries(inp)) {
-		if (null == entry || false === entry) continue
 		const name = key.trim()
 		if (!name) continue
 		const [value, namespaceURI] = Array.isArray(entry) ? entry : [entry]
-		if (null == value || false === value) continue
+		if (null == value) continue
 		_pushElementAttr(ctx, name, value, namespaceURI)
 	}
 }

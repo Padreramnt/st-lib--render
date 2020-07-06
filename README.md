@@ -33,6 +33,22 @@ export interface Renderer {
 export declare function render<T extends Element>(target: T | null, content: (ref: T) => void, renderer?: Renderer): void;
 ```
 
+Use `rerender` function for render element with last used content callback and renderer
+
+```ts
+render(document.body, () => {
+	let i = 0
+	element(null, 'button', ref => {
+		// see https://www.npmjs.com/package/@st-lib/render-events
+		onClick(() => {
+			i++
+			rerender(ref)
+		})
+		text(null, i)
+	})
+})
+```
+
 ### Element
 
 Create element node with specified key, tag name, namespace URI, creation options and content rendering function or raw HTML string
@@ -114,7 +130,18 @@ export declare type AttrsMap = Record<string, OptionalAttrMapEntry>;
 export declare function attrs<T extends AttrsMap>(inp: T): void;
 ```
 
+___name___: `string`, the name of attribute .
+
+___value___: `string | number | false | null | undefined`, the value of attribute
+* if `null | undefined`: do nothing
+* else if `false`: delete attribute
+* else: set attribute to `String(value)`
+
+___namespaceURI___: `string | null | undefined`
+
 > Setting several attributes in one operation has corresponding optimizations.
+
+> Note: unused attributes will __NOT__ be removed.
 
 #### Example:
 
@@ -129,6 +156,9 @@ window.onload = () => {
 				action: '/some/url',
 				method: 'post',
 				enctype: 'multipart/form-data',
+				'delete-attribute': false,
+				'skipped-attribute-1': null,
+				'skipped-attribute-2': undefined,
 			})
 			element(null, 'input', () => {
 				// make input required

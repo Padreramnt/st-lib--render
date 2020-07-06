@@ -31,7 +31,7 @@ export interface CommentDescriptor {
 export interface AttrDescriptor {
 	__typename?: 'AttrDescriptor'
 	name: string
-	value: string
+	value: string | false
 	namespaceURI: string | null
 }
 
@@ -76,7 +76,6 @@ export interface ElementUpdatedCallback<T = Element> {
 
 export interface Context {
 	readonly target: Element | null
-	readonly content: (target: Element | null) => void
 	pushComment(descriptor: CommentDescriptor): Comment | null
 	pushElement(descriptor: ElementDescriptor): Element | null
 	pushElementAttr(descriptor: AttrDescriptor): void

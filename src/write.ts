@@ -1,4 +1,4 @@
-import context, { ElementDescriptor, CommentDescriptor, TextDescriptor, Context, AttrDescriptor, } from './context'
+import context, { ElementDescriptor, CommentDescriptor, TextDescriptor, Context, AttrDescriptor, ElementContentDescriptor, } from './context'
 
 const selfclose = new Set([
 	'area',
@@ -30,8 +30,8 @@ function writeElementAttrs(attrs: Record<string, string | String>) {
 }
 
 function writeElement(descriptor: ElementDescriptor<any>) {
-	const ctx = context.push(new ElementWriteContext(descriptor.namespaceURI, descriptor.tagName, descriptor.content, descriptor.options))
-	ctx.render()
+	const ctx = context.push(new ElementWriteContext(descriptor.namespaceURI, descriptor.tagName, descriptor.options))
+	ctx.render(descriptor.content)
 	context.pop()
 	return ctx.toString()
 }
@@ -55,10 +55,8 @@ function writeComment(descriptor: CommentDescriptor) {
 class WriteContext implements Context {
 	keys: Map<any, number>
 	children: Record<number, string>
-	readonly content: (ref: Element | null) => void
-	constructor(content: (ref: Element | null) => void) {
+	constructor() {
 		this.children = {}
-		this.content = content
 		this.keys = new Map()
 	}
 	get target() { return null }
@@ -97,15 +95,13 @@ class WriteContext implements Context {
 		return null
 	}
 
-	render() {
-		this.content(null)
+	render(content: (ref: Element | null) => void) {
+		content(null)
 	}
 	toString() {
 		return Array.from(this.keys.values()).sort().map(order => this.children[order]).join('')
 	}
 }
-
-function noop() { }
 
 class ElementWriteContext extends WriteContext {
 	attrs: Record<string, string | String>
@@ -116,43 +112,45 @@ class ElementWriteContext extends WriteContext {
 	constructor(
 		namespaceURI: string | null,
 		tagName: string,
-		content: ((target: Element | null) => void) | string | String | null,
 		options: ElementCreationOptions | null
 	) {
-		super(typeof content === 'function' ? content : noop)
-		if (typeof content === 'string' || content instanceof String) {
-			this.innerHTML = content
-		}
+		super()
 		this.attrs = {}
 		this.namespaceURI = namespaceURI
 		this.tagName = tagName
 		this.options = options
 	}
-	render() {
-		if (typeof this.innerHTML === 'undefined') {
-			this.content(null)
+	render(content: ElementContentDescriptor<any> | null) {
+		if (typeof content === 'function') {
+			content(null)
 			this.innerHTML = Array.from(this.keys.values()).sort().map(order => this.children[order]).join('')
+		} else {
+			this.innerHTML = null != content ? content : ''
 		}
 	}
 	pushElementAttr(descriptor: AttrDescriptor) {
 		const trimmed = descriptor.name.trim()
 		const normalized = trimmed.toLowerCase()
 		if ('is' === normalized) return
-		this.attrs['http://www.w3.org/1999/xhtml' === this.namespaceURI || null == this.namespaceURI ? normalized : trimmed] = descriptor.value
+		const key = 'http://www.w3.org/1999/xhtml' === this.namespaceURI || null == this.namespaceURI ? normalized : trimmed
+		if (false === descriptor.value) {
+			delete this.attrs[key]
+		} else {
+			this.attrs[key] = descriptor.value
+		}
 	}
 	toString() {
-		const innerHTML = this.innerHTML ? this.innerHTML : ''
 		const is = this.options && this.options.is ? ` is="${escapeHTMLChars(this.options.is)}"` : ''
 		const a = writeElementAttrs(this.attrs)
-		return innerHTML || !selfclose.has(this.tagName)
-			? `<${this.tagName}${is}${a.length ? ' ' + a : ''}>${innerHTML}</${this.tagName}>`
+		return this.innerHTML || !selfclose.has(this.tagName)
+			? `<${this.tagName}${is}${a.length ? ' ' + a : ''}>${this.innerHTML}</${this.tagName}>`
 			: `<${this.tagName}${is}${a.length ? ' ' + a : ''} />`
 	}
 }
 
 export function write(content: (ref: Element | null) => void) {
-	const ctx = context.push(new WriteContext(content))
-	ctx.render()
+	const ctx = context.push(new WriteContext())
+	ctx.render(content)
 	context.pop()
 	return ctx.toString()
 }

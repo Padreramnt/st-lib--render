@@ -278,17 +278,21 @@ function isElement(it: unknown): it is Element {
 }
 
 class RenderContext implements Context {
-	isUpdated: boolean
-	elementCleanupCallbacksSet: ElementCleanupCallbacksSet
-	elementCreatedCallbacksSet: ElementCreatedCallbacksSet
-	elementUpdatedCallbacksSet: ElementUpdatedCallbacksSet
-	elementLinkingCallbacksSet: ElementLinkingCallbacksSet
-	willDeleteAttributes: Set<string>
-	keys: Map<any, number>
-	target: Element
-	renderer: Renderer
+	readonly isUpdated: boolean
+	readonly elementCleanupCallbacksSet: ElementCleanupCallbacksSet
+	readonly elementCreatedCallbacksSet: ElementCreatedCallbacksSet
+	readonly elementUpdatedCallbacksSet: ElementUpdatedCallbacksSet
+	readonly elementLinkingCallbacksSet: ElementLinkingCallbacksSet
+	readonly keys: Map<any, number>
+	readonly target: Element
+	readonly renderer: Renderer
 	readonly content: (target: Element | null) => void
-	constructor(target: Element, content: (target: Element | null) => void, renderer: Renderer) {
+	readonly attrs: Record<string, AttrDescriptor>
+	constructor(
+		target: Element,
+		content: (target: Element | null) => void,
+		renderer: Renderer,
+	) {
 		this.target = target
 		this.content = content
 		this.renderer = renderer
@@ -297,9 +301,8 @@ class RenderContext implements Context {
 		this.elementCreatedCallbacksSet = new Set()
 		this.elementUpdatedCallbacksSet = new Set()
 		this.elementLinkingCallbacksSet = new Set()
-		this.willDeleteAttributes = new Set(target.getAttributeNames())
-		this.willDeleteAttributes.delete('is')
 		this.keys = new Map()
+		this.attrs = {}
 		runElementCleanupCallbacks(target, this.elementCleanupCallbacksSet)
 	}
 	getDescriptorKey(descriptor: { key: any }) {
@@ -351,11 +354,14 @@ class RenderContext implements Context {
 		const trimmed = descriptor.name.trim()
 		const normalized = trimmed.toLowerCase()
 		if ('is' === normalized) return
-		const attrName = 'http://www.w3.org/1999/xhtml' === this.target.namespaceURI || null == this.target.namespaceURI ? normalized : trimmed
-		this.willDeleteAttributes.delete(attrName)
-		const value = this.target.getAttributeNS(descriptor.namespaceURI, attrName)
-		if (value !== descriptor.value) {
-			this.target.setAttributeNS(descriptor.namespaceURI, attrName, descriptor.value)
+		const key = 'http://www.w3.org/1999/xhtml' === this.target.namespaceURI || null == this.target.namespaceURI ? normalized : trimmed
+		if (false === descriptor.value) {
+			this.target.removeAttributeNS(descriptor.namespaceURI, key)
+		} else {
+			const value = this.target.getAttributeNS(descriptor.namespaceURI, key)
+			if (value !== descriptor.value) {
+				this.target.setAttributeNS(descriptor.namespaceURI, key, descriptor.value)
+			}
 		}
 	}
 	pushElementCleanupCallback(callback: ElementCleanupCallback<Node>): void {
@@ -386,11 +392,6 @@ class RenderContext implements Context {
 			: createText(this.target, order, descriptor, key, this.renderer)
 		return o
 	}
-	updateAttributes() {
-		for (const name of this.willDeleteAttributes) {
-			this.target.removeAttribute(name)
-		}
-	}
 	updateChildNodes() {
 		while (this.keys.size < this.target.childNodes.length) {
 			removeChildNode(this.target, this.target.childNodes[this.keys.size])
@@ -407,11 +408,12 @@ class RenderContext implements Context {
 	}
 	render() {
 		this.content(this.target)
-		this.updateAttributes()
 		this.updateChildNodes()
 		this.updateCallbacks()
 	}
 }
+
+const elementRenderContextMap = new WeakMap<object, RenderContext>()
 
 export function render<T extends Element>(
 	target: T | null,
@@ -424,6 +426,16 @@ export function render(
 	renderer: Renderer = document,
 ) {
 	if (null == target) return
-	context.push(new RenderContext(target, content, renderer)).render()
+	const renderContext = new RenderContext(target, content, renderer)
+	elementRenderContextMap.set(target, renderContext)
+	context.push(renderContext)
+	renderContext.render()
 	context.pop()
+}
+
+export function rerender(target: Element | null) {
+	if (null == target) return
+	const renderContext = elementRenderContextMap.get(target)
+	if (null == renderContext) return
+	render(target, renderContext.content, renderContext.renderer)
 }
