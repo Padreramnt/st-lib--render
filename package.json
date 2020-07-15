@@ -26,10 +26,10 @@
 	},
 	"devDependencies": {
 		"rimraf": "^3.0.2",
-		"typescript": "^3.9.2"
+		"typescript": "^3.9.6"
 	},
 	"dependencies": {
-		"tslib": "^1.10.0"
+		"tslib": "^2.0.0"
 	},
 	"files": [
 		"lib"
