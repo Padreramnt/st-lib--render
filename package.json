@@ -1,6 +1,6 @@
 {
 	"name": "@st-lib/render",
-	"version": "1.0.10",
+	"version": "1.0.11",
 	"description": "Lightweight HTML rendering library.",
 	"main": "lib/index.js",
 	"module": "lib/index.js",
